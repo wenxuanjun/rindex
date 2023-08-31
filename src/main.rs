@@ -28,7 +28,7 @@ struct Args {
     address: IpAddr,
 
     #[argh(option, short = 'p')]
-    #[argh(default = "3000")]
+    #[argh(default = "3500")]
     #[argh(description = "port for listening")]
     port: u16,
 
