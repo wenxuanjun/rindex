@@ -1,4 +1,5 @@
 use argh::FromArgs;
+use rayon::slice::ParallelSliceMut;
 use std::fs::DirEntry;
 use serde::Serialize;
 use spdlog::prelude::*;
@@ -49,79 +50,37 @@ struct Args {
 #[derive(Serialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "lowercase")]
-enum File {
+enum ExplorerEntry {
     Directory {
-        name: String,
         mtime: String,
+        name: String,
     },
     File {
+        mtime: String,
         name: String,
         size: u64,
-        mtime: String,
     },
 }
 
-impl File {
-    fn create(file: &DirEntry) -> File {
+impl ExplorerEntry {
+    fn create(file: &DirEntry) -> ExplorerEntry {
         let metadata = file.metadata().unwrap();
         let modified = metadata.modified().unwrap();
         let formatted = httpdate::fmt_http_date(modified);
         let name = String::from(file.file_name().to_str().unwrap());
 
         if metadata.is_dir() {
-            File::Directory {
+            ExplorerEntry::Directory {
                 name,
                 mtime: formatted,
             }
         } else {
-            File::File {
+            ExplorerEntry::File {
                 name,
                 size: metadata.len(),
                 mtime: formatted,
             }
         }
-    }
-}
-
-fn server_function(server: Arc<Server>, path: Arc<String>) {
-    for request in server.incoming_requests() {
-        let directory = String::from(&*path) + request.url();
-
-        let response = match Path::new(&directory) {
-            path if !path.exists() => {
-                const MESSAGE: &str = "Path not found!";
-                warn!("{} {}", MESSAGE, directory);
-                Response::from_string(MESSAGE).with_status_code(StatusCode(404))
-            }
-            path if !path.is_dir() => {
-                const MESSAGE: &str = "Not a directory!";
-                let absolute_path = path.canonicalize().unwrap();
-                warn!("{} {}", MESSAGE, absolute_path.display());
-                Response::from_string(MESSAGE).with_status_code(StatusCode(400))
-            }
-            path => {
-                let absolute_path = path.canonicalize().unwrap();
-                let start_time = Instant::now();
-                let file_list: Vec<File> = std::fs::read_dir(&absolute_path)
-                    .unwrap()
-                    .par_bridge()
-                    .map(|entry| File::create(&entry.unwrap()))
-                    .collect();
-                let data_text = simd_json::to_string(&file_list).unwrap();
-                let elapsed = start_time.elapsed().as_micros() as f64 / 1000.0;
-
-                debug!(
-                    "Response: {} items in {} tooks {}ms",
-                    file_list.len(),
-                    absolute_path.display().to_string(),
-                    elapsed
-                );
-                Response::from_string(data_text)
-            }
-        };
-
-        request.respond(response).unwrap();
-        LOGGER.get().unwrap().flush();
     }
 }
 
@@ -165,6 +124,66 @@ fn init_logger(args: &Args) -> Arc<Logger> {
     return logger;
 }
 
+fn server_function(server: Arc<Server>, path: String) {
+    for request in server.incoming_requests() {
+        let directory = String::from(&*path) + request.url();
+
+        let response = match Path::new(&directory) {
+            path if !path.exists() => {
+                const MESSAGE: &str = "Path not found!";
+                warn!("{} {}", MESSAGE, directory);
+                Response::from_string(MESSAGE).with_status_code(StatusCode(404))
+            }
+            path if !path.is_dir() => {
+                const MESSAGE: &str = "Not a directory!";
+                let absolute_path = path.canonicalize().unwrap();
+                warn!("{} {}", MESSAGE, absolute_path.display());
+                Response::from_string(MESSAGE).with_status_code(StatusCode(400))
+            }
+            path => {
+                let absolute_path = path.canonicalize().unwrap();
+                let start_time = Instant::now();
+                let mut file_list: Vec<ExplorerEntry> = std::fs::read_dir(&absolute_path)
+                    .unwrap()
+                    .par_bridge()
+                    .map(|entry| ExplorerEntry::create(&entry.unwrap()))
+                    .collect();
+
+                file_list.par_sort_by(|a, b| {
+                    match (a, b) {
+                        (
+                            ExplorerEntry::Directory { name: name_a, .. },
+                            ExplorerEntry::Directory { name: name_b, .. }
+                        )
+                        | (
+                            ExplorerEntry::File { name: name_a, .. },
+                            ExplorerEntry::File { name: name_b, .. }
+                        ) => {
+                            name_a.cmp(&name_b)
+                        }
+                        (ExplorerEntry::Directory { .. }, _) => std::cmp::Ordering::Less,
+                        (_, ExplorerEntry::Directory { .. }) => std::cmp::Ordering::Greater,
+                    }
+                });
+
+                let data_text = simd_json::to_string(&file_list).unwrap();
+                let elapsed = start_time.elapsed().as_micros() as f64 / 1000.0;
+
+                debug!(
+                    "Response: {} items in {} tooks {}ms",
+                    file_list.len(),
+                    absolute_path.display().to_string(),
+                    elapsed
+                );
+                Response::from_string(data_text)
+            }
+        };
+
+        request.respond(response).unwrap();
+        LOGGER.get().unwrap().flush();
+    }
+}
+
 fn main() {
     let args: Args = argh::from_env();
     LOGGER.get_or_init(|| init_logger(&args));
@@ -172,11 +191,10 @@ fn main() {
     let address = SocketAddr::from((args.address, args.port));
     let server = Arc::new(Server::http(address).unwrap());
     let mut guards = Vec::with_capacity(args.threads);
-    let directory = Arc::new(args.directory);
 
     for _ in 0..args.threads {
         let server = server.clone();
-        let directory = directory.clone();
+        let directory = args.directory.clone();
         let guard = std::thread::spawn(move || {
             server_function(server, directory);
         });
