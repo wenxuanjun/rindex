@@ -7,21 +7,21 @@ edition = "2021"
 lto = true
 opt-level = 3
 panic = "abort"
-strip = "symbols"
 codegen-units = 1
 
 [dependencies]
-tiny_http = "0.11"
 argh = "0.1.10"
-spdlog-rs = "0.3"
+spdlog-rs = "0.3.13"
 httpdate = "1.0.2"
-simd-json = "0.10.3"
+sonic-rs = "0.3.5"
 rayon = "1.7.0"
-
-[dependencies.mimalloc]
-version = "0.1.37"
-default-features = false
+safe-path = "0.1.0"
+anyhow = "1.0.82"
 
 [dependencies.serde]
-version = "1.0"
-features = ["alloc", "derive"]
+version = "1.0.200"
+features = ["derive"]
+
+[dependencies.tokio]
+version = "1.37.0"
+features = ["macros", "rt-multi-thread", "net", "io-util"]
