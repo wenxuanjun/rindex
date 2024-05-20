@@ -1,3 +1,4 @@
+use anyhow::Result;
 use argh::FromArgs;
 use spdlog::prelude::*;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -35,12 +36,12 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let args: Args = argh::from_env();
     LOGGER.get_or_init(|| Log::new(args.logdir, args.verbose));
 
     let address = SocketAddr::from((args.address, args.port));
-    let server = Service::new(address, args.directory).await?;
+    let server = Service::new(address, args.directory.canonicalize()?).await?;
     server.start_listening().await?;
 
     LOGGER.get().unwrap().flush();

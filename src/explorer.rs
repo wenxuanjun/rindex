@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 use std::{cmp::Ordering, fs::DirEntry};
 
@@ -38,7 +38,7 @@ impl PartialOrd for ExplorerEntry {
 
 impl ExplorerEntry {
     #[inline]
-    pub fn new(file: &DirEntry) -> anyhow::Result<Self> {
+    pub fn new(file: &DirEntry) -> Result<Self> {
         let metadata = file.metadata()?;
         let modified = metadata.modified()?;
         let mtime = httpdate::fmt_http_date(modified);
