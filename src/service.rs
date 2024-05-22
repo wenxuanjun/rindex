@@ -63,7 +63,7 @@ impl Service {
                     if let Some(ExplorerError::MissingSymlinkTarget(_)) =
                         err.downcast_ref::<ExplorerError>()
                     {
-                        warn!("{}", err);
+                        info!("{}", err);
                         None
                     } else {
                         Some(Err(err))

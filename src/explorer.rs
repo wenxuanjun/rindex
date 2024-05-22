@@ -39,7 +39,7 @@ impl PartialOrd for ExplorerEntry {
 
 #[derive(Debug, Error)]
 pub enum ExplorerError {
-    #[error("Symlink to a non-existent target': {0}")]
+    #[error("Symlink to a non-existent target: {0}")]
     MissingSymlinkTarget(String),
     #[error("Invalid file name: {0}")]
     InvalidFileName(String),
