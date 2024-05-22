@@ -59,16 +59,11 @@ impl Service {
             .par_bridge()
             .filter_map(|entry| match ExplorerEntry::new(&entry.unwrap()) {
                 Ok(explorer_entry) => Some(Ok(explorer_entry)),
-                Err(err) => {
-                    if let Some(ExplorerError::MissingSymlinkTarget(_)) =
-                        err.downcast_ref::<ExplorerError>()
-                    {
-                        info!("{}", err);
-                        None
-                    } else {
-                        Some(Err(err))
-                    }
-                }
+                Err(ExplorerError::MissingSymlinkTarget(ref err)) => {
+                    info!("{}", err);
+                    None
+                },
+                Err(err) => Some(Err(err))
             })
             .collect::<Result<Vec<ExplorerEntry>, _>>()?;
 
