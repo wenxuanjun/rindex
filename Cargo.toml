@@ -19,6 +19,7 @@ safe-path = "0.1.0"
 anyhow = "1.0.82"
 async-std = "1.12.0"
 rand = "0.8.5"
+thiserror = "1.0.61"
 
 [dependencies.serde]
 version = "1.0.200"

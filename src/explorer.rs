@@ -1,6 +1,7 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::Serialize;
 use std::{cmp::Ordering, fs, fs::DirEntry};
+use thiserror::Error;
 
 #[derive(Serialize, PartialEq, Eq)]
 #[serde(tag = "type")]
@@ -36,16 +37,27 @@ impl PartialOrd for ExplorerEntry {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum ExplorerError {
+    #[error("Symlink to a non-existent target': {0}")]
+    MissingSymlinkTarget(String),
+    #[error("Invalid file name: {0}")]
+    InvalidFileName(String),
+}
+
 impl ExplorerEntry {
     #[inline]
     pub fn new(file: &DirEntry) -> Result<Self> {
         let path = file.path();
-        let metadata = fs::metadata(&path)?;
+
+        let metadata = fs::metadata(&path).map_err(|_| {
+            ExplorerError::MissingSymlinkTarget(path.to_string_lossy().into_owned())
+        })?;
 
         let name = file
             .file_name()
             .to_str()
-            .ok_or(anyhow!("Invalid file name"))?
+            .ok_or_else(|| ExplorerError::InvalidFileName(path.to_string_lossy().into_owned()))?
             .to_string();
 
         let modified = metadata.modified()?;

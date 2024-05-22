@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use rayon::prelude::ParallelSliceMut;
 use rayon::prelude::{ParallelBridge, ParallelIterator};
 use snowboard::{headers, response, Request, Server};
@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use crate::explorer::ExplorerError;
 use crate::ExplorerEntry;
 
 pub enum QueryResult {
@@ -53,9 +54,22 @@ impl Service {
         }
 
         let start_time = Instant::now();
-        let mut file_list: Vec<ExplorerEntry> = std::fs::read_dir(&full_path)?
+
+        let mut file_list = std::fs::read_dir(&full_path)?
             .par_bridge()
-            .map(|entry| ExplorerEntry::new(&entry.unwrap()))
+            .filter_map(|entry| match ExplorerEntry::new(&entry.unwrap()) {
+                Ok(explorer_entry) => Some(Ok(explorer_entry)),
+                Err(err) => {
+                    if let Some(ExplorerError::MissingSymlinkTarget(_)) =
+                        err.downcast_ref::<ExplorerError>()
+                    {
+                        warn!("{}", err);
+                        None
+                    } else {
+                        Some(Err(err))
+                    }
+                }
+            })
             .collect::<Result<Vec<ExplorerEntry>, _>>()?;
 
         file_list.par_sort();
