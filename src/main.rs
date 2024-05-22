@@ -35,14 +35,12 @@ struct Args {
     verbose: bool,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let args: Args = argh::from_env();
     LOGGER.get_or_init(|| Log::new(args.logdir, args.verbose));
 
     let address = SocketAddr::from((args.address, args.port));
-    let server = Service::new(address, args.directory.canonicalize()?).await?;
-    server.start_listening().await?;
+    Service::new(address, args.directory.canonicalize()?)?;
 
     LOGGER.get().unwrap().flush();
     Ok(())

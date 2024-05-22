@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde::Serialize;
-use std::{cmp::Ordering, fs::DirEntry};
+use std::{cmp::Ordering, fs, fs::DirEntry};
 
 #[derive(Serialize, PartialEq, Eq)]
 #[serde(tag = "type")]
@@ -39,20 +39,26 @@ impl PartialOrd for ExplorerEntry {
 impl ExplorerEntry {
     #[inline]
     pub fn new(file: &DirEntry) -> Result<Self> {
-        let metadata = file.metadata()?;
-        let modified = metadata.modified()?;
-        let mtime = httpdate::fmt_http_date(modified);
+        let path = file.path();
+        let metadata = fs::metadata(&path)?;
+
         let name = file
             .file_name()
             .to_str()
             .ok_or(anyhow!("Invalid file name"))?
             .to_string();
 
+        let modified = metadata.modified()?;
+        let mtime = httpdate::fmt_http_date(modified);
+
         let explorer_entry = if metadata.is_dir() {
             Self::Directory { name, mtime }
         } else {
-            let size = metadata.len();
-            Self::File { name, size, mtime }
+            Self::File {
+                name,
+                size: metadata.len(),
+                mtime,
+            }
         };
 
         Ok(explorer_entry)
