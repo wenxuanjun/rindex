@@ -54,16 +54,15 @@ impl Service {
         }
 
         let start_time = Instant::now();
-
         let mut file_list = std::fs::read_dir(&full_path)?
             .par_bridge()
             .filter_map(|entry| match ExplorerEntry::new(&entry.unwrap()) {
                 Ok(explorer_entry) => Some(Ok(explorer_entry)),
-                Err(ExplorerError::MissingSymlinkTarget(ref err)) => {
+                Err(err @ ExplorerError::MissingSymlinkTarget(_)) => {
                     info!("{}", err);
                     None
-                },
-                Err(err) => Some(Err(err))
+                }
+                Err(err) => Some(Err(err)),
             })
             .collect::<Result<Vec<ExplorerEntry>, _>>()?;
 

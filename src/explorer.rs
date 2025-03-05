@@ -55,22 +55,18 @@ impl ExplorerEntry {
             ExplorerError::MissingSymlinkTarget(path)
         })?;
 
-        let name = file.file_name().to_string_lossy().to_string();
-
         let modified = metadata
             .modified()
             .map_err(|_| ExplorerError::UnsupportMetadata)?;
-        
+
+        let name = file.file_name().to_string_lossy().to_string();
         let mtime = httpdate::fmt_http_date(modified);
 
         let explorer_entry = if metadata.is_dir() {
             Self::Directory { name, mtime }
         } else {
-            Self::File {
-                name,
-                size: metadata.len(),
-                mtime,
-            }
+            let size = metadata.len();
+            Self::File { name, size, mtime }
         };
 
         Ok(explorer_entry)
