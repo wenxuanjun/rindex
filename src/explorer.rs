@@ -46,7 +46,6 @@ pub enum ExplorerError {
 }
 
 impl ExplorerEntry {
-    #[inline]
     pub fn new(file: &DirEntry) -> Result<Self, ExplorerError> {
         let path = file.path();
 

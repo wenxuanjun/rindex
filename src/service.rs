@@ -1,6 +1,7 @@
 use anyhow::Result;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::prelude::ParallelIterator;
 use rayon::prelude::ParallelSliceMut;
-use rayon::prelude::{ParallelBridge, ParallelIterator};
 use snowboard::{headers, response, Request, Server};
 use spdlog::prelude::*;
 use std::net::SocketAddr;
@@ -55,8 +56,9 @@ impl Service {
 
         let start_time = Instant::now();
         let mut file_list = std::fs::read_dir(&full_path)?
-            .par_bridge()
-            .filter_map(|entry| match ExplorerEntry::new(&entry.unwrap()) {
+            .collect::<Result<Vec<_>, _>>()?
+            .par_iter()
+            .filter_map(|entry| match ExplorerEntry::new(&entry) {
                 Ok(explorer_entry) => Some(Ok(explorer_entry)),
                 Err(err @ ExplorerError::MissingSymlinkTarget(_)) => {
                     info!("{}", err);
