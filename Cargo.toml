@@ -18,6 +18,7 @@ rayon = "1.10.0"
 anyhow = "1.0.97"
 async-std = "1.13.0"
 thiserror = "2.0.12"
+snmalloc-rs = "0.3.7"
 
 [dependencies.serde]
 version = "1.0.218"
