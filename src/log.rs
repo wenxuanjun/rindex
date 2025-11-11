@@ -40,7 +40,7 @@ impl Log {
         }
 
         let logger = Arc::new(logger.build().unwrap());
-        spdlog::swap_default_logger(logger.clone());
+        let _ = spdlog::swap_default_logger(logger.clone());
 
         logger
     }

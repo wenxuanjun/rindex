@@ -11,19 +11,27 @@ codegen-units = 1
 
 [dependencies]
 argh = "0.1.13"
-spdlog-rs = "0.4.1"
+spdlog-rs = "0.5.1"
 httpdate = "1.0.3"
-sonic-rs = "0.3.17"
-rayon = "1.10.0"
-anyhow = "1.0.97"
-async-std = "1.13.0"
-thiserror = "2.0.12"
+sonic-rs = "0.5"
+rayon = "1.11"
+anyhow = "1.0"
+thiserror = "2"
 snmalloc-rs = "0.3.7"
+http-body-util = "0.1"
 
 [dependencies.serde]
-version = "1.0.218"
+version = "1.0.228"
 features = ["derive"]
 
-[dependencies.snowboard]
-version = "1.0.3"
-features = ["async"]
+[dependencies.hyper]
+version = "1.8"
+features = ["server", "http1"]
+
+[dependencies.hyper-util]
+version = "0.1"
+features = ["tokio"]
+
+[dependencies.tokio]
+version = "1"
+features = ["net", "rt-multi-thread", "macros", "signal"]

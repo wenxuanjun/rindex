@@ -35,12 +35,16 @@ struct Args {
     verbose: bool,
 }
 
-fn main() -> Result<()> {
+#[tokio::main(flavor = "multi_thread")]
+async fn main() -> Result<()> {
     let args: Args = argh::from_env();
     LOGGER.get_or_init(|| Log::new(args.logdir, args.verbose));
 
     let address = SocketAddr::from((args.address, args.port));
-    Service::new(address, args.directory.canonicalize()?)?;
+    let directory = args.directory.canonicalize()?;
+
+    Service::new(address, directory).await?;
+    tokio::signal::ctrl_c().await?;
 
     LOGGER.get().unwrap().flush();
     Ok(())
